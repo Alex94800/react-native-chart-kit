@@ -4,7 +4,8 @@ import {
   ScrollView,
   StyleSheet,
   Animated,
-  TextInput
+  TextInput,
+  Dimensions
 } from "react-native";
 import {
   Svg,
@@ -320,7 +321,7 @@ class LineChart extends AbstractChart {
               .map((d, i) => {
                 const x =
                   paddingRight +
-                  (i * (width - paddingRight)) / dataset.data.length;
+                  (i * (width - paddingRight)) / (this.props.withFullwidthChart ? dataset.data.length - 1 : dataset.data.length);
                 const y =
                   ((baseHeight - this.calcHeight(d, datas, height)) / 4) * 3 +
                   paddingTop;
@@ -328,7 +329,7 @@ class LineChart extends AbstractChart {
               })
               .join(" ") +
             ` ${paddingRight +
-              ((width - paddingRight) / dataset.data.length) *
+              ((width - paddingRight) / (this.props.withFullwidthChart ? dataset.data.length - 1 : dataset.data.length)) *
                 (dataset.data.length - 1)},${(height / 4) * 3 +
               paddingTop} ${paddingRight},${(height / 4) * 3 + paddingTop}`
           }
@@ -343,7 +344,6 @@ class LineChart extends AbstractChart {
     if (this.props.bezier) {
       return this.renderBezierLine(config);
     }
-
     const {
       width,
       height,
@@ -358,7 +358,7 @@ class LineChart extends AbstractChart {
     data.forEach((dataset, index) => {
       const points = dataset.data.map((d, i) => {
         const x =
-          (i * (width - paddingRight)) / dataset.data.length + paddingRight;
+          (i * (width - paddingRight)) / (this.props.withFullwidthChart ? dataset.data.length - 1 : dataset.data.length) + paddingRight;
         const y =
           ((baseHeight - this.calcHeight(d, datas, height)) / 4) * 3 +
           paddingTop;
@@ -388,7 +388,7 @@ class LineChart extends AbstractChart {
     const datas = this.getDatas(data);
     const x = i =>
       Math.floor(
-        paddingRight + (i * (width - paddingRight)) / dataset.data.length
+        paddingRight + (i * (width - paddingRight)) / (this.props.withFullwidthChart ? dataset.data.length - 1 : dataset.data.length)
       );
     const baseHeight = this.calcBaseHeight(datas, height);
     const y = i => {
@@ -433,7 +433,7 @@ class LineChart extends AbstractChart {
       const d =
         this.getBezierLinePoints(dataset, config) +
         ` L${paddingRight +
-          ((width - paddingRight) / dataset.data.length) *
+          ((width - paddingRight) / (this.props.withFullwidthChart ? dataset.data.length - 1 : dataset.data.length)) *
             (dataset.data.length - 1)},${(height / 4) * 3 +
           paddingTop} L${paddingRight},${(height / 4) * 3 + paddingTop} Z`;
       return (
@@ -477,11 +477,14 @@ class LineChart extends AbstractChart {
       withOuterLines = true,
       withHorizontalLabels = true,
       withVerticalLabels = true,
+      withFullwidthChart = false,
+
       style = {},
       decorator,
       onDataPointClick,
       verticalLabelRotation = 0,
       horizontalLabelRotation = 0,
+      horizontalLabelWidth = 64,
       formatYLabel = yLabel => yLabel,
       formatXLabel = xLabel => xLabel,
       segments,
@@ -491,8 +494,8 @@ class LineChart extends AbstractChart {
     const { labels = [] } = data;
     const {
       borderRadius = 0,
-      paddingTop = 16,
-      paddingRight = 64,
+      paddingTop = 0,
+      paddingRight = withFullwidthChart ? 0 : 64,
       margin = 0,
       marginRight = 0,
       paddingBottom = 0
