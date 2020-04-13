@@ -494,7 +494,7 @@ class LineChart extends AbstractChart {
     const { labels = [] } = data;
     const {
       borderRadius = 0,
-      paddingTop = 0,
+      paddingTop = 2,
       paddingRight = withFullwidthChart ? 0 : 64,
       margin = 0,
       marginRight = 0,
