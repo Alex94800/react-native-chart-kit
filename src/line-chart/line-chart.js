@@ -510,6 +510,19 @@ class LineChart extends AbstractChart {
   }
 
   onGestureEvent = (event) => {
+    if ((Math.abs(event.nativeEvent.translationY) > 20 && Math.abs(event.nativeEvent.translationX) < 20) || Math.abs(event.nativeEvent.translationY) > 160) {
+      this.state.dotsInfo.forEach(item => {
+        Animated.timing(
+          item.opacity,
+          {
+            toValue: 0,
+            duration: 50,
+            useNativeDriver: false
+          }
+        ).start()
+      })
+      return
+    }
     const counts = []
     for (let i = 0; i < this.state.dotsInfo.length; i++) {
       if (this.state.dotsInfo[i].x) {
@@ -522,24 +535,26 @@ class LineChart extends AbstractChart {
       return (Math.abs(curr - goal) < Math.abs(prev - goal) ? curr : prev);
     });
 
-    Animated.timing(
-      this.state.dotsInfo.find(i => i.x === closest).opacity,
-      {
-        toValue: 1,
-        duration: 50,
-        useNativeDriver: false
-      }
-    ).start()
-    this.state.dotsInfo.filter(i => i.x !== closest).forEach(item => {
+    if (Math.abs(event.nativeEvent.translationY) < 20) {
       Animated.timing(
-        item.opacity,
+        this.state.dotsInfo.find(i => i.x === closest).opacity,
         {
-          toValue: 0,
+          toValue: 1,
           duration: 50,
           useNativeDriver: false
         }
       ).start()
-    })
+      this.state.dotsInfo.filter(i => i.x !== closest).forEach(item => {
+        Animated.timing(
+          item.opacity,
+          {
+            toValue: 0,
+            duration: 50,
+            useNativeDriver: false
+          }
+        ).start()
+      })
+    }
   }
 
   renderLegend = (width, legendOffset) => {
