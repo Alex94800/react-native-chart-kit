@@ -2,11 +2,12 @@ import React from "react";
 import {
   View,
   ScrollView,
+  Text,
   StyleSheet,
   Animated,
   TextInput,
-  Dimensions
-} from "react-native";
+  Dimensions, TouchableWithoutFeedback,
+} from 'react-native';
 import {
   Svg,
   Circle,
@@ -14,18 +15,21 @@ import {
   Polyline,
   Path,
   Rect,
-  G
-} from "react-native-svg";
+  G, Defs,
+} from 'react-native-svg';
 import AbstractChart from "../abstract-chart";
 import { LegendItem } from "./legend-item";
+import {PanGestureHandler, NativeViewGestureHandler, TapGestureHandler} from 'react-native-gesture-handler';
 
 let AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 class LineChart extends AbstractChart {
   label = React.createRef();
-
+  clearTimeout = null;
+  tapGestureRef = React.createRef()
   state = {
-    scrollableDotHorizontalOffset: new Animated.Value(0)
+    scrollableDotHorizontalOffset: new Animated.Value(0),
+    dotsInfo: this.props.data.datasets[0].data.map((value, index) => ({ opacity: new Animated.Value(0) })),
   };
 
   getColor = (dataset, opacity) => {
@@ -75,7 +79,7 @@ class LineChart extends AbstractChart {
           return;
         }
         const cx =
-          paddingRight + (i * (width - paddingRight)) / dataset.data.length;
+          paddingRight + (i * (width - paddingRight)) / (this.props.withFullwidthChart ? dataset.data.length - 1 : dataset.data.length);
         const cy =
           ((baseHeight - this.calcHeight(x, datas, height)) / 4) * 3 +
           paddingTop;
@@ -93,7 +97,24 @@ class LineChart extends AbstractChart {
             getColor: opacity => this.getColor(dataset, opacity)
           });
         };
+
+        let component = <></>
+        if (i !== 0 && i < dataset.data.length - 1 && this.props.tooltips) {
+          component =
+          <Animated.View key={Math.random()}
+                         style={{position: 'absolute', left: cx, top: cy - 30, opacity: this.state.dotsInfo[i - 1].opacity}}>
+            {this.props.tooltips[i]}
+          </Animated.View>
+          if (!this.state.dotsInfo[i - 1].hasOwnProperty('x')) {
+            const newDotsInfo = [ ...this.state.dotsInfo ]
+            newDotsInfo[i - 1].x = cx
+            this.setState(prevState => ({
+              dotsInfo: newDotsInfo
+            }))
+          }
+        }
         output.push(
+          component,
           <Circle
             key={Math.random()}
             cx={cx}
@@ -447,6 +468,80 @@ class LineChart extends AbstractChart {
     });
   };
 
+  onStateChange = (event) => {
+    if (event.nativeEvent.state === 2) {
+      this.displayClosest(event.nativeEvent.absoluteX)
+    }
+    if (event.nativeEvent.state === 5) {
+      this.state.dotsInfo.forEach(dot => {
+        Animated.timing(
+          dot.opacity,
+          {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: false
+          }
+        ).start()
+      })
+    }
+  }
+
+  displayClosest = (x) => {
+    const counts = []
+    for (let i = 0; i < this.state.dotsInfo.length; i++) {
+      if (this.state.dotsInfo[i].x) {
+        counts.push(this.state.dotsInfo[i].x)
+      }
+    }
+    const goal = x
+
+    const closest = counts.reduce(function(prev, curr) {
+      return (Math.abs(curr - goal) < Math.abs(prev - goal) ? curr : prev);
+    });
+
+    Animated.timing(
+      this.state.dotsInfo.find(i => i.x === closest).opacity,
+      {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: false
+      }
+    ).start()
+  }
+
+  onGestureEvent = (event) => {
+    const counts = []
+    for (let i = 0; i < this.state.dotsInfo.length; i++) {
+      if (this.state.dotsInfo[i].x) {
+        counts.push(this.state.dotsInfo[i].x)
+      }
+    }
+    const goal = event.nativeEvent.absoluteX
+
+    const closest = counts.reduce(function(prev, curr) {
+      return (Math.abs(curr - goal) < Math.abs(prev - goal) ? curr : prev);
+    });
+
+    Animated.timing(
+      this.state.dotsInfo.find(i => i.x === closest).opacity,
+      {
+        toValue: 1,
+        duration: 50,
+        useNativeDriver: false
+      }
+    ).start()
+    this.state.dotsInfo.filter(i => i.x !== closest).forEach(item => {
+      Animated.timing(
+        item.opacity,
+        {
+          toValue: 0,
+          duration: 50,
+          useNativeDriver: false
+        }
+      ).start()
+    })
+  }
+
   renderLegend = (width, legendOffset) => {
     const { legend, datasets } = this.props.data;
     const baseLegendItemX = width / (legend.length + 1);
@@ -516,153 +611,164 @@ class LineChart extends AbstractChart {
     }
 
     const legendOffset = this.props.data.legend ? height * 0.15 : 0;
-
     return (
-      <View style={style}>
-        <Svg
-          height={height + paddingBottom + legendOffset}
-          width={width - margin * 2 - marginRight}
-        >
-          <Rect
-            width="100%"
-            height={height + legendOffset}
-            rx={borderRadius}
-            ry={borderRadius}
-            fill="url(#backgroundGradient)"
-            fillOpacity={transparent ? 0 : 1}
-          />
-          {this.props.data.legend &&
-            this.renderLegend(config.width, legendOffset)}
-          <G x="0" y={legendOffset}>
-            {this.renderDefs({
-              ...config,
-              ...this.props.chartConfig
-            })}
-            <G>
-              {withInnerLines
-                ? this.renderHorizontalLines({
+      <>
+        <TapGestureHandler enabled={!!this.props.tooltips}
+                           simultaneousHandlers={this.nativeHandler}
+                           onHandlerStateChange={this.onStateChange}>
+          <PanGestureHandler enabled={!!this.props.tooltips}
+                             ref={this.panGestureRef}
+                             simultaneousHandlers={[this.props.nativeHandler, this.tapGestureRef]}
+                             onGestureEvent={this.onGestureEvent}
+                             onHandlerStateChange={this.onStateChange}>
+            <View style={style}>
+              <Svg
+                height={height + paddingBottom + legendOffset}
+                width={width - margin * 2 - marginRight}
+              >
+                <Rect
+                  width="100%"
+                  height={height + legendOffset}
+                  rx={borderRadius}
+                  ry={borderRadius}
+                  fill="url(#backgroundGradient)"
+                  fillOpacity={transparent ? 0 : 1}
+                />
+                {this.props.data.legend &&
+                this.renderLegend(config.width, legendOffset)}
+                <G x="0" y={legendOffset}>
+                  {this.renderDefs({
                     ...config,
-                    count: count,
-                    paddingTop,
-                    paddingRight
-                  })
-                : withOuterLines
-                ? this.renderHorizontalLine({
-                    ...config,
-                    paddingTop,
-                    paddingRight
-                  })
-                : null}
-            </G>
-            <G>
-              {withHorizontalLabels
-                ? this.renderHorizontalLabels({
-                    ...config,
-                    count: count,
-                    data: datas,
-                    paddingTop,
-                    paddingRight,
-                    formatYLabel,
-                    decimalPlaces: this.props.chartConfig.decimalPlaces
-                  })
-                : null}
-            </G>
-            <G>
-              {withInnerLines
-                ? this.renderVerticalLines({
-                    ...config,
-                    data: data.datasets[0].data,
-                    paddingTop,
-                    paddingRight
-                  })
-                : withOuterLines
-                ? this.renderVerticalLine({
-                    ...config,
-                    paddingTop,
-                    paddingRight
-                  })
-                : null}
-            </G>
-            <G>
-              {withVerticalLabels
-                ? this.renderVerticalLabels({
-                    ...config,
-                    labels,
-                    paddingRight,
-                    paddingTop,
-                    formatXLabel
-                  })
-                : null}
-            </G>
-            <G>
-              {this.renderLine({
-                ...config,
-                ...this.props.chartConfig,
-                paddingRight,
-                paddingTop,
-                data: data.datasets
-              })}
-            </G>
-            <G>
-              {withShadow &&
-                this.renderShadow({
-                  ...config,
-                  data: data.datasets,
-                  paddingRight,
-                  paddingTop
-                })}
-            </G>
-            <G>
-              {withDots &&
-                this.renderDots({
-                  ...config,
-                  data: data.datasets,
-                  paddingTop,
-                  paddingRight,
-                  onDataPointClick
-                })}
-            </G>
-            <G>
-              {withScrollableDot &&
-                this.renderScrollableDot({
-                  ...config,
-                  ...this.props.chartConfig,
-                  data: data.datasets,
-                  paddingTop,
-                  paddingRight,
-                  onDataPointClick,
-                  scrollableDotHorizontalOffset
-                })}
-            </G>
-            <G>
-              {decorator &&
-                decorator({
-                  ...config,
-                  data: data.datasets,
-                  paddingTop,
-                  paddingRight
-                })}
-            </G>
-          </G>
-        </Svg>
-        {withScrollableDot && (
-          <ScrollView
-            style={StyleSheet.absoluteFill}
-            contentContainerStyle={{ width: width * 2 }}
-            showsHorizontalScrollIndicator={false}
-            scrollEventThrottle={16}
-            onScroll={Animated.event([
-              {
-                nativeEvent: {
-                  contentOffset: { x: scrollableDotHorizontalOffset }
-                }
-              }
-            ])}
-            horizontal
-            bounces={false}
-          />
-        )}
-      </View>
+                    ...this.props.chartConfig
+                  })}
+                  <G>
+                    {withInnerLines
+                      ? this.renderHorizontalLines({
+                        ...config,
+                        count: count,
+                        paddingTop,
+                        paddingRight
+                      })
+                      : withOuterLines
+                        ? this.renderHorizontalLine({
+                          ...config,
+                          paddingTop,
+                          paddingRight
+                        })
+                        : null}
+                  </G>
+                  <G>
+                    {withHorizontalLabels
+                      ? this.renderHorizontalLabels({
+                        ...config,
+                        count: count,
+                        data: datas,
+                        paddingTop,
+                        paddingRight,
+                        formatYLabel,
+                        decimalPlaces: this.props.chartConfig.decimalPlaces
+                      })
+                      : null}
+                  </G>
+                  <G>
+                    {withInnerLines
+                      ? this.renderVerticalLines({
+                        ...config,
+                        data: data.datasets[0].data,
+                        paddingTop,
+                        paddingRight
+                      })
+                      : withOuterLines
+                        ? this.renderVerticalLine({
+                          ...config,
+                          paddingTop,
+                          paddingRight
+                        })
+                        : null}
+                  </G>
+                  <G>
+                    {withVerticalLabels
+                      ? this.renderVerticalLabels({
+                        ...config,
+                        labels,
+                        paddingRight,
+                        paddingTop,
+                        formatXLabel
+                      })
+                      : null}
+                  </G>
+                  <G>
+                    {this.renderLine({
+                      ...config,
+                      ...this.props.chartConfig,
+                      paddingRight,
+                      paddingTop,
+                      data: data.datasets
+                    })}
+                  </G>
+                  <G>
+                    {withShadow &&
+                    this.renderShadow({
+                      ...config,
+                      data: data.datasets,
+                      paddingRight,
+                      paddingTop
+                    })}
+                  </G>
+                  <G>
+                    {withDots &&
+                    this.renderDots({
+                      ...config,
+                      data: data.datasets,
+                      paddingTop,
+                      paddingRight,
+                      onDataPointClick
+                    })}
+                  </G>
+                  <G>
+                    {withScrollableDot &&
+                    this.renderScrollableDot({
+                      ...config,
+                      ...this.props.chartConfig,
+                      data: data.datasets,
+                      paddingTop,
+                      paddingRight,
+                      onDataPointClick,
+                      scrollableDotHorizontalOffset
+                    })}
+                  </G>
+                  <G>
+                    {decorator &&
+                    decorator({
+                      ...config,
+                      data: data.datasets,
+                      paddingTop,
+                      paddingRight
+                    })}
+                  </G>
+                </G>
+              </Svg>
+              {withScrollableDot && (
+                <ScrollView
+                  style={StyleSheet.absoluteFill}
+                  contentContainerStyle={{ width: width * 2 }}
+                  showsHorizontalScrollIndicator={false}
+                  scrollEventThrottle={16}
+                  onScroll={Animated.event([
+                    {
+                      nativeEvent: {
+                        contentOffset: { x: scrollableDotHorizontalOffset }
+                      }
+                    }
+                  ])}
+                  horizontal
+                  bounces={false}
+                />
+              )}
+            </View>
+          </PanGestureHandler>
+        </TapGestureHandler>
+      </>
     );
   }
 }
