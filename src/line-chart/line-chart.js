@@ -629,11 +629,9 @@ class LineChart extends AbstractChart {
     return (
       <>
         <TapGestureHandler enabled={!!this.props.tooltips}
-                           simultaneousHandlers={this.nativeHandler}
                            onHandlerStateChange={this.onStateChange}>
           <PanGestureHandler enabled={!!this.props.tooltips}
                              ref={this.panGestureRef}
-                             simultaneousHandlers={[this.props.nativeHandler, this.tapGestureRef]}
                              onGestureEvent={this.onGestureEvent}
                              onHandlerStateChange={this.onStateChange}>
             <View style={style}>
