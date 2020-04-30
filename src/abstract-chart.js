@@ -6,6 +6,8 @@ class AbstractChart extends Component {
   calcScaler = data => {
     if (this.props.fromZero) {
       return Math.max(...data, 0) - Math.min(...data, 0) || 1;
+    } else if (this.props.fromValue) {
+      return Math.max(...data, this.props.fromValue) - Math.min(...data, this.props.fromValue) || 1;
     } else {
       return Math.max(...data) - Math.min(...data) || 1;
     }
@@ -29,6 +31,9 @@ class AbstractChart extends Component {
     if (min < 0 && max > 0) {
       return height * (val / this.calcScaler(data));
     } else if (min >= 0 && max >= 0) {
+      if (this.props.fromValue) {
+        return height * ((val - this.props.fromValue) / this.calcScaler(data));
+      }
       return this.props.fromZero
         ? height * (val / this.calcScaler(data))
         : height * ((val - min) / this.calcScaler(data));
@@ -42,9 +47,9 @@ class AbstractChart extends Component {
   getPropsForBackgroundLines() {
     const { propsForBackgroundLines = {} } = this.props.chartConfig;
     return {
-      stroke: this.props.chartConfig.color(0.2),
-      strokeDasharray: "5, 10",
-      strokeWidth: 1,
+      stroke: this.props.lineConfig.color,
+      strokeDasharray: "5, 5",
+      strokeWidth: 0.5,
       ...propsForBackgroundLines
     };
   }
@@ -55,23 +60,32 @@ class AbstractChart extends Component {
       color,
       labelColor = color
     } = this.props.chartConfig;
+
+    const finalColor = this.props.lineConfig && this.props.lineConfig.labelStyle ?
+      this.props.lineConfig.labelStyle.color || labelColor(0.8) : labelColor(0.8)
+
+    const fontSize = this.props.lineConfig && this.props.lineConfig.labelStyle ?
+      this.props.lineConfig.labelStyle.fontSize || 12 : 12
+    const style = this.props.lineConfig && this.props.lineConfig.labelStyle ?
+      this.props.lineConfig.labelStyle : {}
     return {
-      fontSize: 12,
-      fill: labelColor(0.8),
-      ...propsForLabels
+      fontSize: fontSize,
+      fill: finalColor,
+      ...propsForLabels,
+      ...style
     };
   }
 
   renderHorizontalLines = config => {
     const { count, width, height, paddingTop, paddingRight } = config;
     const basePosition = height - height / 4;
-
+    const leftOffset = this.props.chartConfig.leftOffset || 0
     return [...new Array(count + 1)].map((_, i) => {
       const y = (basePosition / count) * i + paddingTop;
       return (
         <Line
           key={Math.random()}
-          x1={paddingRight}
+          x1={leftOffset}
           y1={y}
           x2={width}
           y2={y}
@@ -106,6 +120,7 @@ class AbstractChart extends Component {
       decimalPlaces = 2,
       formatYLabel = yLabel => yLabel
     } = config;
+    const leftOffset = this.props.chartConfig.leftOffset || 0
     const {
       yAxisLabel = "",
       yAxisSuffix = "",
@@ -120,14 +135,29 @@ class AbstractChart extends Component {
           data[0].toFixed(decimalPlaces)
         )}${yAxisSuffix}`;
       } else {
-        const label = this.props.fromZero
+        let label = this.props.fromZero
           ? (this.calcScaler(data) / count) * i + Math.min(...data, 0)
           : (this.calcScaler(data) / count) * i + Math.min(...data);
-        yLabel = `${yAxisLabel}${formatYLabel(
-          label.toFixed(decimalPlaces)
-        )}${yAxisSuffix}`;
-      }
+        if (this.props.fromValue) {
+          label = (this.calcScaler(data) / count) * i + Math.min(...data, this.props.fromValue)
+        }
+        if (label < 1000) {
+          yLabel = `${yAxisLabel}${formatYLabel(
+            label.toLocaleString(this.props.locale || 'en', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+          )}${yAxisSuffix}`;
+        } else if (label < 1000000) {
+          label = label/1000
+          yLabel = `${yAxisLabel}${formatYLabel(
+            label.toLocaleString(this.props.locale || 'en', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+          )}k${yAxisSuffix}`
+        } else {
+          label = label/1000000
+          yLabel = `${yAxisLabel}${formatYLabel(
+            label.toLocaleString(this.props.locale || 'en', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+          )}M${yAxisSuffix}`
+        }
 
+      }
       const basePosition = height - height / 4;
       const x = paddingRight - yLabelsOffset;
       const y =
@@ -139,9 +169,9 @@ class AbstractChart extends Component {
           rotation={horizontalLabelRotation}
           origin={`${x}, ${y}`}
           key={Math.random()}
-          x={x}
+          x={x + leftOffset}
           textAnchor="end"
-          y={y}
+          y={y + 4}
           {...this.getPropsForLabels()}
         >
           {yLabel}
@@ -204,20 +234,7 @@ class AbstractChart extends Component {
     return [...new Array(Math.ceil(data.length / yAxisInterval))].map(
       (_, i) => {
         return (
-          <Line
-            key={Math.random()}
-            x1={Math.floor(
-              ((width - paddingRight) / (data.length / yAxisInterval)) * i +
-                paddingRight
-            )}
-            y1={0}
-            x2={Math.floor(
-              ((width - paddingRight) / (data.length / yAxisInterval)) * i +
-                paddingRight
-            )}
-            y2={height - height / 4 + paddingTop}
-            {...this.getPropsForBackgroundLines()}
-          />
+          <></>
         );
       }
     );
@@ -226,14 +243,7 @@ class AbstractChart extends Component {
   renderVerticalLine = config => {
     const { height, paddingTop, paddingRight } = config;
     return (
-      <Line
-        key={Math.random()}
-        x1={Math.floor(paddingRight)}
-        y1={0}
-        x2={Math.floor(paddingRight)}
-        y2={height - height / 4 + paddingTop}
-        {...this.getPropsForBackgroundLines()}
-      />
+      <></>
     );
   };
 
