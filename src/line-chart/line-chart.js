@@ -102,7 +102,7 @@ class LineChart extends AbstractChart {
         if (i !== 0 && i < dataset.data.length - 1 && this.props.tooltips) {
           component =
           <Animated.View key={Math.random()}
-                         style={{position: 'absolute', left: cx, top: cy - 30, opacity: this.state.dotsInfo[i - 1].opacity}}>
+                         style={{position: 'absolute', left: cx, top: cy - 50, opacity: this.state.dotsInfo[i - 1].opacity}}>
             {this.props.tooltips[i]}
           </Animated.View>
           if (!this.state.dotsInfo[i - 1].hasOwnProperty('x')) {
