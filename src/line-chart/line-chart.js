@@ -478,7 +478,7 @@ class LineChart extends AbstractChart {
           dot.opacity,
           {
             toValue: 0,
-            duration: 300,
+            duration: 0,
             useNativeDriver: false
           }
         ).start()
@@ -503,7 +503,7 @@ class LineChart extends AbstractChart {
       this.state.dotsInfo.find(i => i.x === closest).opacity,
       {
         toValue: 1,
-        duration: 150,
+        duration: 0,
         useNativeDriver: false
       }
     ).start()
@@ -516,7 +516,7 @@ class LineChart extends AbstractChart {
           item.opacity,
           {
             toValue: 0,
-            duration: 50,
+            duration: 0,
             useNativeDriver: false
           }
         ).start()
@@ -540,7 +540,7 @@ class LineChart extends AbstractChart {
         this.state.dotsInfo.find(i => i.x === closest).opacity,
         {
           toValue: 1,
-          duration: 50,
+          duration: 0,
           useNativeDriver: false
         }
       ).start()
@@ -549,7 +549,7 @@ class LineChart extends AbstractChart {
           item.opacity,
           {
             toValue: 0,
-            duration: 50,
+            duration: 0,
             useNativeDriver: false
           }
         ).start()
