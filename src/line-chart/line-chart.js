@@ -29,7 +29,7 @@ class LineChart extends AbstractChart {
   tapGestureRef = React.createRef()
   state = {
     scrollableDotHorizontalOffset: new Animated.Value(0),
-    dotsInfo: this.props.data.datasets[0].data.map((value, index) => ({ opacity: new Animated.Value(0) })),
+    dotsInfo: (this.props.data.datasets[0].data || []).map((value, index) => ({ opacity: new Animated.Value(0) })),
   };
 
   getColor = (dataset, opacity) => {
@@ -70,10 +70,8 @@ class LineChart extends AbstractChart {
         return null;
       }
     } = this.props;
-
     data.forEach(dataset => {
       if (dataset.withDots == false) return;
-
       dataset.data.forEach((x, i) => {
         if (hidePointsAtIndex.includes(i)) {
           return;
@@ -99,13 +97,13 @@ class LineChart extends AbstractChart {
         };
 
         let component = <></>
-        if (i !== 0 && i < dataset.data.length - 1 && this.props.tooltips) {
+        if (i !== 0 && i < dataset.data.length - 1 && this.props.tooltips && (dataset.data.length < 100 || dataset.data.length >= 100 && (i % 4 === 0))) {
           component =
-          <Animated.View key={Math.random()}
-                         style={{position: 'absolute', left: cx, top: cy - 50, opacity: this.state.dotsInfo[i - 1].opacity}}>
+          <Animated.View key={i}
+                         style={{position: 'absolute', left: cx, top: cy - 50, opacity: this.state.dotsInfo[i - 1] ? this.state.dotsInfo[i - 1].opacity : 0}}>
             {this.props.tooltips[i]}
           </Animated.View>
-          if (!this.state.dotsInfo[i - 1].hasOwnProperty('x')) {
+          if (this.state.dotsInfo[i - 1] && !this.state.dotsInfo[i - 1].hasOwnProperty('x')) {
             const newDotsInfo = [ ...this.state.dotsInfo ]
             newDotsInfo[i - 1].x = cx
             this.setState(prevState => ({
