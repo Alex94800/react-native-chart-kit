@@ -7,8 +7,8 @@ const Pie = require("paths-js/pie");
 
 class ProgressChart extends AbstractChart {
   render() {
-    const { width, height, style = {}, data, hideLegend } = this.props;
-    const { borderRadius = 0, margin = 0, marginRight = 0 } = style;
+    const { width, height, style = {}, data, hideLegend, strokeWidth, radius } = this.props;
+    const { borderRadius = 0, margin = 0, marginRight = 0, paddingLeft } = style;
 
     if (Array.isArray(data)) {
       data = {
@@ -17,7 +17,7 @@ class ProgressChart extends AbstractChart {
     }
 
     const pies = data.data.map((pieData, i) => {
-      const r = ((height / 2 - 32) / data.data.length) * i + 32;
+      const r = radius//((height / 2 - 32) / data.data.length) * i + 32;
       return Pie({
         r,
         R: r,
@@ -30,7 +30,7 @@ class ProgressChart extends AbstractChart {
     });
 
     const pieBackgrounds = data.data.map((pieData, i) => {
-      const r = ((height / 2 - 32) / data.data.length) * i + 32;
+      const r = radius//((height / 2 - 32) / data.data.length) * i + 32;
       return Pie({
         r,
         R: r,
@@ -111,15 +111,15 @@ class ProgressChart extends AbstractChart {
             ry={borderRadius}
             fill="url(#backgroundGradient)"
           />
-          <G x={this.props.width / 2.5} y={this.props.height / 2}>
+          <G x={this.props.width / 2} y={this.props.height / 2}>
             <G>
               {pieBackgrounds.map((pie, i) => {
                 return (
                   <Path
                     key={Math.random()}
                     d={pie.curves[0].sector.path.print()}
-                    strokeWidth={16}
-                    stroke={this.props.chartConfig.color(0.2, i)}
+                    strokeWidth={strokeWidth}
+                    stroke={this.props.chartConfig.bgColor}
                   />
                 );
               })}
@@ -129,14 +129,9 @@ class ProgressChart extends AbstractChart {
                 return (
                   <Path
                     key={Math.random()}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
                     d={pie.curves[0].sector.path.print()}
-                    strokeWidth={16}
-                    stroke={this.props.chartConfig.color(
-                      (i / pies.length) * 0.5 + 0.5,
-                      i
-                    )}
+                    strokeWidth={strokeWidth}
+                    stroke={this.props.chartConfig.color()}
                   />
                 );
               })}
